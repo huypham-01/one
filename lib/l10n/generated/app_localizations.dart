@@ -2081,16 +2081,10 @@ abstract class AppLocalizations {
   /// **'Disconnected'**
   String get statusDisconnected;
 
-  /// No description provided for @updateAvailableTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'A new update is available!'**
-  String get updateAvailableTitle;
-
   /// No description provided for @updateDialogTitle.
   ///
   /// In en, this message translates to:
-  /// **'Update {version}'**
+  /// **'Version: {version}'**
   String updateDialogTitle(Object version);
 
   /// No description provided for @updateDescription.

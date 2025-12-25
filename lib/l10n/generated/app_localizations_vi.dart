@@ -1014,18 +1014,15 @@ class AppLocalizationsVi extends AppLocalizations {
   String get statusDisconnected => 'Mất kết nối';
 
   @override
-  String get updateAvailableTitle => 'Đã có bản cập nhật mới!';
-
-  @override
   String updateDialogTitle(Object version) {
-    return 'Cập nhật $version';
+    return 'Phiên bản $version';
   }
 
   @override
   String get updateDescription => 'Đã có bản cập nhật mới!';
 
   @override
-  String get updateLater => 'Để sau';
+  String get updateLater => 'Later';
 
   @override
   String get updateNow => 'Cập nhật ngay';

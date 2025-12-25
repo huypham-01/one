@@ -8,7 +8,7 @@ import 'package:open_filex/open_filex.dart';
 
 class UpdateService {
   static const String apiUrl =
-      '$baseUrl/landing-page/app_vcm/backend/?c=File&m=listApps&q=SMART-FACTORY';
+      '$baseUrl/web_develop/landing-page/app_vcm/backend/?c=File&m=listApps&q=ONE';
 
   static Future<void> checkForUpdate(BuildContext context) async {
     try {
@@ -70,24 +70,48 @@ class UpdateService {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        title: Text(
-          AppLocalizations.of(context)!.updateDialogTitle(version),
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text(desc),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.blue, // Màu xanh để giống liên kết
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+
+        // 🔥 ICON + APP NAME
+        title: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                "assets/images/acumenIcon.png",
+                width: 36,
+                height: 36,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              // Không có backgroundColor để không trông như nút
             ),
-            child: Text(AppLocalizations.of(context)!.updateLater),
-          ),
+            const SizedBox(width: 10),
+            Text(
+              "ONE",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+
+        // 🔥 Nội dung: title update + desc + version
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title cập nhật
+            Text(
+              desc,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Version nhỏ
+            Text(
+              AppLocalizations.of(context)!.updateDialogTitle(version),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+
+        actions: [
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);

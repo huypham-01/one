@@ -340,10 +340,8 @@
   "statusConnected": "已连接",
   "statusDisconnected": "已断开",
 
-  "updateAvailableTitle": "有新的更新可用！",
-  "updateDialogTitle": "更新 {version}",
+  "updateDialogTitle": "版本 {version}",
   "updateDescription": "有新的更新可用！",
-  "updateLater": "稍后",
   "updateNow": "立即更新",
   "downloadingTitle": "正在下载...",
 

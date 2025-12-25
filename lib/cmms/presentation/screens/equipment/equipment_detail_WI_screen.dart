@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:mobile/l10n/generated/app_localizations.dart';
 import 'package:mobile/utils/constants.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter/services.dart';
 
 // ============ MODELS ============
 abstract class FormItemModel {
@@ -238,9 +240,14 @@ class UserImageModel extends FormItemModel {
 
 class FormStepModel {
   final int stepIndex;
+  final bool preparation;
   final List<FormItemModel> items;
 
-  FormStepModel({required this.stepIndex, required this.items});
+  FormStepModel({
+    required this.stepIndex,
+    required this.preparation,
+    required this.items,
+  });
 
   factory FormStepModel.fromJson(Map<String, dynamic> json) {
     final itemsJson = json['items'] ?? json['formItems'] ?? [];
@@ -248,7 +255,11 @@ class FormStepModel {
         .map((item) => FormItemModel.fromJson(item))
         .toList();
 
-    return FormStepModel(stepIndex: json['stepIndex'] ?? 1, items: items);
+    return FormStepModel(
+      stepIndex: json['stepIndex'] ?? 1,
+      preparation: json['preparation'] ?? false,
+      items: items,
+    );
   }
 }
 
@@ -264,8 +275,28 @@ class ChecklistFormNotifier extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String get wiCode => _wiCode;
 
-  FormStepModel? get currentStep =>
-      _currentStepIndex < _steps.length ? _steps[_currentStepIndex] : null;
+  FormStepModel? get currentStep {
+    if (_steps.isEmpty) return null;
+
+    // Có Preparation
+    if (preparationStep != null) {
+      if (_currentStepIndex == 0) {
+        return preparationStep;
+      } else {
+        final index = _currentStepIndex - 1;
+        if (index < normalSteps.length) {
+          return normalSteps[index];
+        }
+      }
+    }
+
+    // Không có Preparation
+    if (_currentStepIndex < normalSteps.length) {
+      return normalSteps[_currentStepIndex];
+    }
+
+    return null;
+  }
 
   List<FormItemModel> get allAnswerableItems {
     return _steps
@@ -303,12 +334,36 @@ class ChecklistFormNotifier extends ChangeNotifier {
     return false;
   }
 
+  bool get hasPreparation {
+    return steps.any((s) => s.preparation == true);
+  }
+
+  int get totalSteps => normalSteps.length;
+  int get displayStepNumber {
+    if (hasPreparation) {
+      // preparation = index 0
+      return _currentStepIndex;
+    } else {
+      // step thật bắt đầu từ 1
+      return _currentStepIndex + 1;
+    }
+  }
+
+  FormStepModel? get preparationStep {
+    for (final step in _steps) {
+      if (step.preparation == true) {
+        return step;
+      }
+    }
+    return null;
+  }
+
+  List<FormStepModel> get normalSteps {
+    return _steps.where((step) => step.preparation != true).toList();
+  }
+
   // ✅ NEW: Load form từ schema data thay vì API
-  void loadFormFromSchema(
-    BuildContext context,
-    String schemaString, {
-    String? wiCode,
-  }) {
+  void loadFormFromSchema(String schemaString, {String? wiCode}) {
     _isLoading = true;
     notifyListeners();
 
@@ -321,7 +376,7 @@ class ChecklistFormNotifier extends ChangeNotifier {
           .map((json) => FormStepModel.fromJson(json))
           .toList();
 
-      _wiCode = wiCode ?? AppLocalizations.of(context)!.checklistForm;
+      _wiCode = wiCode ?? 'Checklist Form';
       _currentStepIndex = 0;
     } catch (e) {
       debugPrint("Error loading form from schema: $e");
@@ -334,17 +389,13 @@ class ChecklistFormNotifier extends ChangeNotifier {
   }
 
   // ✅ NEW: Load form từ parsed data (List<FormStepModel>)
-  void loadFormFromSteps(
-    BuildContext context,
-    List<FormStepModel> steps, {
-    String? wiCode,
-  }) {
+  void loadFormFromSteps(List<FormStepModel> steps, {String? wiCode}) {
     _isLoading = true;
     notifyListeners();
 
     try {
       _steps = steps;
-      _wiCode = wiCode ?? AppLocalizations.of(context)!.checklistForm;
+      _wiCode = wiCode ?? 'Checklist Form';
       _currentStepIndex = 0;
     } finally {
       _isLoading = false;
@@ -491,9 +542,9 @@ class EquipmentDetailWiScreen extends StatelessWidget {
 
         // Load data based on what's provided
         if (formSteps != null) {
-          notifier.loadFormFromSteps(context, formSteps!, wiCode: wiCode);
+          notifier.loadFormFromSteps(formSteps!, wiCode: wiCode);
         } else if (schemaString != null) {
-          notifier.loadFormFromSchema(context, schemaString!, wiCode: wiCode);
+          notifier.loadFormFromSchema(schemaString!, wiCode: wiCode);
         }
 
         return notifier;
@@ -939,18 +990,48 @@ class _VideoPlayerWidget extends StatefulWidget {
 class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
   late VideoPlayerController _controller;
   CustomSubtitleController? _customSubtitleController;
-  Timer? _positionTimer;
   Map<String, String>? _subs;
   String? _selectedLang;
 
   bool _isInitialized = false;
   bool _hasError = false;
+  bool _isMuted = true;
+  double _volume = 1.0;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _initializeVideo();
+  }
+
+  // Listener mới để cập nhật phụ đề
+  void _videoListener() {
+    if (_controller.value.isInitialized && _customSubtitleController != null) {
+      // Chỉ cập nhật position vào controller,
+      // controller sẽ tự lo việc thông báo cho UI qua ValueNotifier
+      _customSubtitleController!.updatePosition(_controller.value.position);
+    }
+  }
+
+  Future<String?> _getSavedSubtitleLanguage(
+    Map<String, String> subtitles,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedLang = prefs.getString('selectedLanguage');
+
+    switch (savedLang) {
+      case 'English':
+        return subtitles.containsKey('en') ? 'en' : null;
+      case 'Vietnamese':
+        return subtitles.containsKey('vi') ? 'vi' : null;
+      case 'Chinese':
+        return subtitles.containsKey('zh') ? 'zh' : null;
+      case 'Taiwanese':
+        return subtitles.containsKey('zh') ? 'zh' : null;
+      default:
+        return null;
+    }
   }
 
   Future<void> _initializeVideo() async {
@@ -960,77 +1041,52 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
       );
       await _controller.initialize();
 
-      // Khởi tạo custom subtitle controller
+      // Thêm listener cho video
+      _controller.addListener(_videoListener);
+
+      _isMuted = true;
+      await _controller.setVolume(0.0);
+
       if (widget.subtitles != null && widget.subtitles!.isNotEmpty) {
         _subs = widget.subtitles!;
-        _selectedLang = _subs!.containsKey('en') ? 'en' : _subs!.keys.first;
+        final savedLang = await _getSavedSubtitleLanguage(_subs!);
+        _selectedLang =
+            savedLang ?? (_subs!.containsKey('en') ? 'en' : _subs!.keys.first);
 
         _customSubtitleController = CustomSubtitleController();
         await _customSubtitleController!.loadFromUrl(_subs![_selectedLang]!);
-
-        // Bắt đầu timer để cập nhật subtitle position
-        _startPositionTimer();
-
-        debugPrint(
-          "✅ Custom subtitle controller created with URL: ${_subs![_selectedLang]}",
-        );
       }
 
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-      }
+      if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
-      debugPrint("Error initializing video: $e");
-      if (mounted) {
+      if (mounted)
         setState(() {
           _hasError = true;
           _errorMessage = e.toString();
         });
-      }
     }
-  }
-
-  void _startPositionTimer() {
-    _positionTimer?.cancel();
-    _positionTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (_controller.value.isInitialized &&
-          _customSubtitleController != null) {
-        _customSubtitleController!.updatePosition(_controller.value.position);
-        if (mounted) setState(() {});
-      }
-    });
   }
 
   // đổi ngôn ngữ phụ đề khi user chọn
   Future<void> _changeSubtitleLang(String lang) async {
-    if (_subs == null) return;
-    final url = _subs![lang];
+    if (_customSubtitleController == null) return;
+
+    if (lang == 'off') {
+      _customSubtitleController!.disable();
+      setState(() => _selectedLang = null);
+      return;
+    }
+
+    final url = _subs?[lang];
     if (url == null) return;
 
-    try {
-      if (_customSubtitleController != null) {
-        await _customSubtitleController!.loadFromUrl(url);
-      } else {
-        _customSubtitleController = CustomSubtitleController();
-        await _customSubtitleController!.loadFromUrl(url);
-        _startPositionTimer();
-      }
-
-      setState(() {
-        _selectedLang = lang;
-      });
-
-      debugPrint("✅ Changed subtitle language to: $lang, URL: $url");
-    } catch (e) {
-      debugPrint("❌ Error changing subtitle language: $e");
-    }
+    await _customSubtitleController!.loadFromUrl(url);
+    setState(() => _selectedLang = lang);
   }
 
   @override
   void dispose() {
-    _positionTimer?.cancel();
+    _controller.removeListener(_videoListener); // Quan trọng: Remove listener
     _controller.dispose();
     _customSubtitleController?.dispose();
     super.dispose();
@@ -1052,19 +1108,51 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
           ),
 
           // Custom subtitle overlay
+          // if (_customSubtitleController != null)
+          //   CustomSubtitleOverlay(text: _customSubtitleController!.currentText),
           if (_customSubtitleController != null)
-            CustomSubtitleOverlay(text: _customSubtitleController!.currentText),
+            ValueListenableBuilder<String?>(
+              valueListenable: _customSubtitleController!,
+              builder: (context, subtitleText, _) {
+                if (subtitleText == null || subtitleText.isEmpty)
+                  return const SizedBox.shrink();
+                return CustomSubtitleOverlay(text: subtitleText);
+              },
+            ),
 
           // Video controls
           _VideoControls(
             controller: _controller,
+            isMuted: _isMuted,
+            onToggleMute: _toggleMute,
             availableSubtitleLangs: _subs?.keys.toList(),
             selectedLang: _selectedLang,
             onSubtitleSelected: _changeSubtitleLang,
+            subtitleController: _customSubtitleController,
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _toggleMute() async {
+    if (_isMuted) {
+      await _unmute();
+    } else {
+      await _mute();
+    }
+  }
+
+  Future<void> _mute() async {
+    _isMuted = true;
+    await _controller.setVolume(0.0);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _unmute() async {
+    _isMuted = false;
+    await _controller.setVolume(_volume);
+    if (mounted) setState(() {});
   }
 
   Widget _loadingWidget() {
@@ -1133,17 +1221,21 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
 ////// Controls với menu chọn subtitle
 class _VideoControls extends StatefulWidget {
   final VideoPlayerController controller;
+  final bool isMuted;
+  final VoidCallback onToggleMute;
   final List<String>? availableSubtitleLangs;
   final String? selectedLang;
   final ValueChanged<String>? onSubtitleSelected;
-  final String? currentSubtitleText; // Thêm param để truyền subtitle text
+  final CustomSubtitleController? subtitleController; // Nhận object controller
 
   const _VideoControls({
     required this.controller,
+    required this.isMuted,
+    required this.onToggleMute,
     this.availableSubtitleLangs,
     this.selectedLang,
     this.onSubtitleSelected,
-    this.currentSubtitleText, // Thêm param
+    this.subtitleController,
     super.key,
   });
 
@@ -1333,6 +1425,25 @@ class _VideoControlsState extends State<_VideoControls> {
                       const SizedBox(width: 40), // Spacer
                       Row(
                         children: [
+                          GestureDetector(
+                            onTap: widget.onToggleMute,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Icon(
+                                widget.isMuted
+                                    ? Icons.volume_off
+                                    : Icons.volume_up,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 12),
                           _buildSubtitleMenu(),
                           const SizedBox(width: 12),
                           GestureDetector(
@@ -1482,8 +1593,8 @@ class _VideoControlsState extends State<_VideoControls> {
           availableSubtitleLangs: widget.availableSubtitleLangs,
           selectedLang: widget.selectedLang,
           onSubtitleSelected: widget.onSubtitleSelected,
-          currentSubtitleText:
-              widget.currentSubtitleText, // Truyền subtitle text
+          // Truyền controller xuống để dùng ValueListenableBuilder bên trong fullscreen
+          subtitleController: widget.subtitleController,
         ),
       ),
     );
@@ -1495,14 +1606,15 @@ class _FullscreenVideoPlayer extends StatefulWidget {
   final List<String>? availableSubtitleLangs;
   final String? selectedLang;
   final ValueChanged<String>? onSubtitleSelected;
-  final String? currentSubtitleText; // Thêm param để hiển thị subtitle
+  final CustomSubtitleController?
+  subtitleController; // Dùng controller để lấy text realtime
 
   const _FullscreenVideoPlayer({
     required this.controller,
     this.availableSubtitleLangs,
     this.selectedLang,
     this.onSubtitleSelected,
-    this.currentSubtitleText, // Thêm param
+    this.subtitleController,
     super.key,
   });
 
@@ -1512,21 +1624,54 @@ class _FullscreenVideoPlayer extends StatefulWidget {
 
 class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
   bool _showControls = true;
+  String? _selectedLangUI;
   Timer? _hideTimer;
 
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(() {
-      if (mounted) setState(() {});
-    });
+    _selectedLangUI = widget.selectedLang; // sync ban đầu
+    // 1. XOAY MÀN HÌNH NGANG KHI VÀO FULLSCREEN
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    // Ẩn thanh status bar để trải nghiệm tốt hơn
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    widget.controller.addListener(_videoListener);
     _startHideTimer();
+  }
+
+  void _videoListener() {
+    if (mounted) {
+      // 1. Cập nhật UI cho Slider/Timer (cũ)
+      setState(() {});
+
+      // 2. CẬP NHẬT PHỤ ĐỀ (MỚI)
+      if (widget.subtitleController != null) {
+        widget.subtitleController!.updatePosition(
+          widget.controller.value.position,
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
+    // 2. XOAY MÀN HÌNH VỀ DỌC KHI THOÁT FULLSCREEN
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    widget.controller.removeListener(_videoListener);
     _hideTimer?.cancel();
     super.dispose();
+  }
+
+  // Copy lại hàm helper từ class cũ
+  String _getLanguageName(String langCode) {
+    const languageMap = {'en': 'English', 'vi': 'Tiếng Việt', 'zh': '中文'};
+    return languageMap[langCode.toLowerCase()] ?? langCode.toUpperCase();
   }
 
   void _startHideTimer() {
@@ -1540,21 +1685,43 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
 
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
-    if (_showControls) {
-      _startHideTimer();
-    }
+    if (_showControls) _startHideTimer();
   }
 
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = duration.inHours;
     final minutes = twoDigits(duration.inMinutes.remainder(60));
     final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return duration.inHours > 0
+        ? '${duration.inHours}:$minutes:$seconds'
+        : '$minutes:$seconds';
+  }
 
-    if (hours > 0) {
-      return '$hours:$minutes:$seconds';
-    }
-    return '$minutes:$seconds';
+  Widget _buildVolumeButton() {
+    final bool isMuted = widget.controller.value.volume == 0.0;
+
+    return GestureDetector(
+      onTap: () async {
+        if (isMuted) {
+          await widget.controller.setVolume(1.0);
+        } else {
+          await widget.controller.setVolume(0.0);
+        }
+        // Listener của controller sẽ tự gọi setState() để cập nhật icon
+      },
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Icon(
+          isMuted ? Icons.volume_off : Icons.volume_up,
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
+    );
   }
 
   Widget _buildSubtitleMenu() {
@@ -1564,8 +1731,7 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
     }
 
     return PopupMenuButton<String>(
-      initialValue: widget.selectedLang,
-      offset: const Offset(0, 50), // Thêm offset để menu hiển thị đúng vị trí
+      initialValue: _selectedLangUI ?? 'off',
       icon: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
@@ -1575,88 +1741,52 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
         child: const Icon(Icons.subtitles, color: Colors.white, size: 24),
       ),
       color: Colors.black.withOpacity(0.9),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      elevation: 8, // Thêm shadow để menu nổi bật hơn
       onSelected: (lang) {
-        if (lang == 'off') {
-          widget.onSubtitleSelected?.call('');
-        } else {
-          widget.onSubtitleSelected?.call(lang);
-        }
-      },
-      itemBuilder: (context) {
-        final items = <PopupMenuEntry<String>>[];
+        // 1. cập nhật UI fullscreen
+        setState(() {
+          _selectedLangUI = lang == 'off' ? null : lang;
+        });
 
-        // Option "Off" để tắt subtitle
-        items.add(
-          PopupMenuItem(
-            value: 'off',
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              child: Row(
-                children: [
-                  Icon(
-                    (widget.selectedLang == null || widget.selectedLang == '')
-                        ? Icons.check
-                        : null,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Off',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                ],
+        // 2. gọi logic thật
+        widget.onSubtitleSelected?.call(lang);
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'off',
+          child: Row(
+            children: [
+              Icon(
+                _selectedLangUI == null ? Icons.check : null,
+                color: Colors.white,
+                size: 18,
               ),
+              const SizedBox(width: 8),
+              const Text('Off', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        ...widget.availableSubtitleLangs!.map(
+          (lang) => PopupMenuItem(
+            value: lang,
+            child: Row(
+              children: [
+                Icon(
+                  lang == _selectedLangUI ? Icons.check : null,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _getLanguageName(lang),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
             ),
           ),
-        );
-
-        items.add(const PopupMenuDivider());
-
-        // Các ngôn ngữ có sẵn
-        for (final lang in widget.availableSubtitleLangs!) {
-          items.add(
-            PopupMenuItem(
-              value: lang,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      lang == widget.selectedLang ? Icons.check : null,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _getLanguageName(lang),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: lang == widget.selectedLang
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-
-        return items;
-      },
+        ),
+      ],
     );
-  }
-
-  String _getLanguageName(String langCode) {
-    // Map các mã ngôn ngữ thành tên hiển thị
-    const languageMap = {'en': 'English', 'vi': 'Tiếng Việt', 'zh': '中文'};
-
-    return languageMap[langCode.toLowerCase()] ?? langCode.toUpperCase();
   }
 
   @override
@@ -1666,224 +1796,158 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
       body: GestureDetector(
         onTap: _toggleControls,
         child: Stack(
+          alignment: Alignment.center,
           children: [
-            // Video player
-            Center(
-              child: AspectRatio(
-                aspectRatio: widget.controller.value.aspectRatio,
-                child: VideoPlayer(widget.controller),
-              ),
+            // Video Player
+            AspectRatio(
+              aspectRatio: widget.controller.value.aspectRatio,
+              child: VideoPlayer(widget.controller),
             ),
 
-            // Subtitle overlay - Thêm phần này
-            if (widget.currentSubtitleText != null &&
-                widget.currentSubtitleText!.isNotEmpty)
+            // 3. HIỂN THỊ SUBTITLE (Sử dụng ValueListenableBuilder để mượt mà)
+            // SUBTITLE OVERLAY – FULLSCREEN
+            if (widget.subtitleController != null)
               Positioned(
-                bottom: 100, // Đặt cao hơn controls một chút
-                left: 20,
-                right: 20,
-                child: Center(
-                  child: IntrinsicWidth(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(
-                          180,
-                          36,
-                          35,
-                          35,
-                        ), // Slightly more opaque for fullscreen
-                        borderRadius: BorderRadius.circular(6),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        widget.currentSubtitleText!,
-                        style: const TextStyle(
-                          fontFamily: 'NotoSansSC',
-                          fontSize: 16, // Larger font for fullscreen
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                bottom: _showControls ? 60 : 10,
+                left: 40,
+                right: 40,
+                child: ValueListenableBuilder<String?>(
+                  valueListenable: widget.subtitleController!,
+                  builder: (context, text, _) {
+                    if (text == null || text.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: null,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          text,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
 
-            // Controls overlay
+            // Controls Overlay
             AnimatedOpacity(
               opacity: _showControls ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 300),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.7),
-                      Colors.transparent,
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.7),
-                    ],
-                    stops: const [0.0, 0.3, 0.7, 1.0],
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    // Top bar
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.6),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                            // Subtitle menu - đã thêm vào đây
-                            _buildSubtitleMenu(),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Center play button
-                    Expanded(
-                      child: Center(
-                        child: GestureDetector(
-                          onTap: () {
-                            if (widget.controller.value.isPlaying) {
-                              widget.controller.pause();
-                            } else {
-                              widget.controller.play();
-                              _startHideTimer();
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.7),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              widget.controller.value.isPlaying
-                                  ? Icons.pause
-                                  : Icons.play_arrow,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Bottom controls
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Text(
-                              _formatDuration(widget.controller.value.position),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  activeTrackColor: Colors.blue,
-                                  inactiveTrackColor: Colors.white.withOpacity(
-                                    0.3,
-                                  ),
-                                  thumbColor: Colors.blue,
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 8,
-                                  ),
-                                  trackHeight: 4,
-                                ),
-                                child: Slider(
-                                  value: widget
-                                      .controller
-                                      .value
-                                      .position
-                                      .inMilliseconds
-                                      .toDouble()
-                                      .clamp(
-                                        0.0,
-                                        widget
-                                            .controller
-                                            .value
-                                            .duration
-                                            .inMilliseconds
-                                            .toDouble(),
-                                      ),
-                                  min: 0.0,
-                                  max: widget
-                                      .controller
-                                      .value
-                                      .duration
-                                      .inMilliseconds
-                                      .toDouble(),
-                                  onChanged: (value) {
-                                    widget.controller.seekTo(
-                                      Duration(milliseconds: value.round()),
-                                    );
-                                  },
-                                  onChangeStart: (value) {
-                                    _hideTimer?.cancel();
-                                  },
-                                  onChangeEnd: (value) {
-                                    _startHideTimer();
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              _formatDuration(widget.controller.value.duration),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: _buildControlsUI(context),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildControlsUI(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black54,
+            Colors.transparent,
+            Colors.transparent,
+            Colors.black54,
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          // Top Bar
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  // LEFT: Close
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+
+                  const Spacer(), // đẩy nhóm bên phải sang phải
+                  // RIGHT: Volume + Subtitle
+                  Row(
+                    children: [
+                      _buildVolumeButton(),
+                      const SizedBox(width: 12),
+                      _buildSubtitleMenu(),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Middle
+          const Spacer(),
+          IconButton(
+            iconSize: 60,
+            icon: Icon(
+              widget.controller.value.isPlaying
+                  ? Icons.pause_circle
+                  : Icons.play_circle,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              widget.controller.value.isPlaying
+                  ? widget.controller.pause()
+                  : widget.controller.play();
+              _startHideTimer();
+            },
+          ),
+          const Spacer(),
+          // Bottom Progress Bar
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Text(
+                    _formatDuration(widget.controller.value.position),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  Expanded(
+                    child: Slider(
+                      value: widget.controller.value.position.inMilliseconds
+                          .toDouble(),
+                      max: widget.controller.value.duration.inMilliseconds
+                          .toDouble(),
+                      onChanged: (v) => widget.controller.seekTo(
+                        Duration(milliseconds: v.round()),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _formatDuration(widget.controller.value.duration),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1972,9 +2036,17 @@ class _NavigationFooter extends StatelessWidget {
                 const SizedBox(width: 80),
 
               const Spacer(),
+              //TODO
 
+              // Text(
+              //   '${AppLocalizations.of(context)!.step} ${notifier.currentStepIndex + 1} / ${notifier.steps.length}',
+              //   style: const TextStyle(fontWeight: FontWeight.w600),
+              // ),
               Text(
-                '${AppLocalizations.of(context)!.step} ${notifier.currentStepIndex + 1} / ${notifier.steps.length}',
+                notifier.hasPreparation && notifier.currentStepIndex == 0
+                    ? 'Preparation'
+                    : '${AppLocalizations.of(context)!.step} '
+                          '${notifier.displayStepNumber} / ${notifier.totalSteps}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
 

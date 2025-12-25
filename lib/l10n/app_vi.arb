@@ -338,10 +338,8 @@
   "statusConnected": "Đang kết nối",
   "statusDisconnected": "Mất kết nối",
 
-  "updateAvailableTitle": "Đã có bản cập nhật mới!",
-  "updateDialogTitle": "Cập nhật {version}",
+  "updateDialogTitle": "Phiên bản {version}",
   "updateDescription": "Đã có bản cập nhật mới!",
-  "updateLater": "Để sau",
   "updateNow": "Cập nhật ngay",
   "downloadingTitle": "Đang tải xuống...",
   "cmmsDescription": "Hệ thống quản lý bảo trì",

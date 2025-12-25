@@ -1011,11 +1011,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusDisconnected => 'Disconnected';
 
   @override
-  String get updateAvailableTitle => 'A new update is available!';
-
-  @override
   String updateDialogTitle(Object version) {
-    return 'Update $version';
+    return 'Version: $version';
   }
 
   @override

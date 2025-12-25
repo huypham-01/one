@@ -473,52 +473,66 @@ class VttParser {
   static List<SubtitleCue> parseVttContent(String vttContent) {
     final List<SubtitleCue> cues = [];
 
-    // Chia content thành các dòng
-    final lines = vttContent.split('\n').map((line) => line.trim()).toList();
+    final lines = vttContent.replaceAll('\r\n', '\n').split('\n');
 
-    // Bỏ qua header "WEBVTT"
     int i = 0;
-    while (i < lines.length && !lines[i].contains('-->')) {
-      i++;
-    }
 
-    // Parse từng cue
     while (i < lines.length) {
-      // Tìm dòng có timestamp (format: 00:00.000 --> 00:20.000)
-      if (lines[i].contains('-->')) {
-        try {
-          final timeParts = lines[i].split('-->');
-          if (timeParts.length == 2) {
-            final startTime = _parseTimestamp(timeParts[0].trim());
-            final endTime = _parseTimestamp(timeParts[1].trim());
+      final line = lines[i].trim();
 
-            // Thu thập tất cả text lines cho cue này
-            final List<String> textLines = [];
-            i++; // Di chuyển đến dòng text đầu tiên
+      // Skip empty lines, WEBVTT header
+      if (line.isEmpty || line == 'WEBVTT') {
+        i++;
+        continue;
+      }
 
-            // Đọc tất cả text lines cho đến khi gặp dòng trống hoặc timestamp tiếp theo
-            while (i < lines.length &&
-                lines[i].isNotEmpty &&
-                !lines[i].contains('-->')) {
-              textLines.add(lines[i]);
-              i++;
-            }
-
-            // Ghép tất cả text lines thành một cue
-            if (textLines.isNotEmpty) {
-              final text = textLines.join('\n');
-              cues.add(
-                SubtitleCue(startTime: startTime, endTime: endTime, text: text),
-              );
-            }
-          }
-        } catch (e) {
-          print('Error parsing cue at line ${i + 1}: $e');
+      // Skip STYLE block
+      if (line == 'STYLE') {
+        i++;
+        while (i < lines.length && lines[i].trim().isNotEmpty) {
           i++;
         }
-      } else {
-        i++;
+        continue;
       }
+
+      // Detect timestamp line
+      if (line.contains('-->')) {
+        try {
+          final parts = line.split('-->');
+
+          final startTime = _parseTimestamp(parts[0].trim());
+
+          // 👇 lấy endTime trước khoảng trắng đầu tiên
+          final endTimeRaw = parts[1].trim().split(' ').first;
+          final endTime = _parseTimestamp(endTimeRaw);
+
+          i++;
+
+          final textLines = <String>[];
+
+          // Collect subtitle text
+          while (i < lines.length &&
+              lines[i].trim().isNotEmpty &&
+              !lines[i].contains('-->')) {
+            textLines.add(lines[i].trim());
+            i++;
+          }
+
+          if (textLines.isNotEmpty) {
+            cues.add(
+              SubtitleCue(
+                startTime: startTime,
+                endTime: endTime,
+                text: textLines.join('\n'),
+              ),
+            );
+          }
+        } catch (e) {
+          print('❌ Error parsing cue at line $i: $e');
+        }
+      }
+
+      i++;
     }
 
     return cues;
@@ -561,45 +575,88 @@ class VttParser {
 }
 
 // Custom Subtitle Controller sử dụng VTT parser
-class CustomSubtitleController {
-  List<SubtitleCue> _cues = [];
-  String? _currentText;
-  Duration _currentPosition = Duration.zero;
+// class CustomSubtitleController {
+//   List<SubtitleCue> _cues = [];
+//   String? _currentText;
+//   Duration _currentPosition = Duration.zero;
 
-  List<SubtitleCue> get cues => _cues;
-  String? get currentText => _currentText;
+//   List<SubtitleCue> get cues => _cues;
+//   String? get currentText => _currentText;
+
+//   Future<void> loadFromUrl(String url) async {
+//     try {
+//       _cues = await VttParser.parseFromUrl(url);
+//       print('✅ Loaded ${_cues.length} subtitle cues');
+//       for (var cue in _cues) {
+//         print(cue);
+//       }
+//     } catch (e) {
+//       print('❌ Error loading subtitles: $e');
+//       _cues = [];
+//     }
+//   }
+
+//   void updatePosition(Duration position) {
+//     _currentPosition = position;
+
+//     // Tìm cue phù hợp với thời gian hiện tại
+//     SubtitleCue? activeCue;
+//     for (var cue in _cues) {
+//       if (position >= cue.startTime && position <= cue.endTime) {
+//         activeCue = cue;
+//         break;
+//       }
+//     }
+
+//     _currentText = activeCue?.text;
+//   }
+
+//   void dispose() {
+//     _cues.clear();
+//     _currentText = null;
+//   }
+// }
+class CustomSubtitleController extends ValueNotifier<String?> {
+  List<SubtitleCue> _cues = [];
+  bool _enabled = true;
+
+  CustomSubtitleController() : super(null);
 
   Future<void> loadFromUrl(String url) async {
-    try {
-      _cues = await VttParser.parseFromUrl(url);
-      print('✅ Loaded ${_cues.length} subtitle cues');
-      for (var cue in _cues) {
-        print(cue);
-      }
-    } catch (e) {
-      print('❌ Error loading subtitles: $e');
-      _cues = [];
-    }
+    _enabled = true; // bật lại khi load
+    _cues = await VttParser.parseFromUrl(url);
+    value = null;
+  }
+
+  void disable() {
+    _enabled = false;
+    value = null; // clear subtitle ngay
+  }
+
+  void enable() {
+    _enabled = true;
   }
 
   void updatePosition(Duration position) {
-    _currentPosition = position;
+    if (!_enabled || _cues.isEmpty) return;
 
-    // Tìm cue phù hợp với thời gian hiện tại
     SubtitleCue? activeCue;
-    for (var cue in _cues) {
+    for (final cue in _cues) {
       if (position >= cue.startTime && position <= cue.endTime) {
         activeCue = cue;
         break;
       }
     }
 
-    _currentText = activeCue?.text;
+    if (value != activeCue?.text) {
+      value = activeCue?.text;
+    }
   }
 
+  @override
   void dispose() {
     _cues.clear();
-    _currentText = null;
+    super.dispose();
   }
 }
 
@@ -626,18 +683,18 @@ class CustomSubtitleOverlay extends StatelessWidget {
         child: IntrinsicWidth(
           child: Container(
             padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
+              horizontal: 6,
+              vertical: 4,
             ), // Thêm padding để có khoảng cách quanh text (tùy chọn)
             decoration: BoxDecoration(
-              color: const Color.fromARGB(163, 36, 35, 35),
+              color: const Color.fromARGB(61, 36, 35, 35),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               text!,
               style: const TextStyle(
                 fontFamily: 'NotoSansSC',
-                fontSize: 13,
+                fontSize: 11,
                 color: Colors.white,
               ),
               textAlign: TextAlign.center,

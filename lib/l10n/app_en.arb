@@ -339,8 +339,7 @@
   "statusConnected": "Connected",
   "statusDisconnected": "Disconnected",
 
-  "updateAvailableTitle": "A new update is available!",
-  "updateDialogTitle": "Update {version}",
+  "updateDialogTitle": "Version: {version}",
   "updateDescription": "A new update is available!",
   "updateLater": "Later",
   "updateNow": "Update now",

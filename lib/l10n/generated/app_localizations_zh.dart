@@ -1007,18 +1007,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get statusDisconnected => '已断开';
 
   @override
-  String get updateAvailableTitle => '有新的更新可用！';
-
-  @override
   String updateDialogTitle(Object version) {
-    return '更新 $version';
+    return '版本 $version';
   }
 
   @override
   String get updateDescription => '有新的更新可用！';
 
   @override
-  String get updateLater => '稍后';
+  String get updateLater => 'Later';
 
   @override
   String get updateNow => '立即更新';
@@ -2050,18 +2047,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get statusDisconnected => '已斷開';
 
   @override
-  String get updateAvailableTitle => '有新的更新可用！';
-
-  @override
   String updateDialogTitle(Object version) {
-    return '更新 $version';
+    return '版本 $version';
   }
 
   @override
   String get updateDescription => '有新的更新可用！';
-
-  @override
-  String get updateLater => '稍後';
 
   @override
   String get updateNow => '立即更新';

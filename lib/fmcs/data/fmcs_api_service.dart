@@ -36,7 +36,7 @@ class FmcsApiService {
             },
           )
           .timeout(
-            const Duration(seconds: 120),
+            const Duration(seconds: 360),
             onTimeout: () {
               throw Exception('Request timeout');
             },

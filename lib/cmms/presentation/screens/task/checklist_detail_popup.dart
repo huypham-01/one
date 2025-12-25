@@ -3,9 +3,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile/utils/constants.dart';
@@ -95,8 +97,16 @@ class _ProgressIndicator extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Text(
+                  //   '${AppLocalizations.of(context)!.step} ${notifier.currentStepIndex + 1} / ${notifier.steps.length}',
+                  //   style: const TextStyle(fontWeight: FontWeight.w600),
+                  // ),
                   Text(
-                    '${AppLocalizations.of(context)!.step} ${notifier.currentStepIndex + 1} / ${notifier.steps.length}',
+                    notifier.preparationStep != null &&
+                            notifier.currentStepIndex == 0
+                        ? 'Preparation'
+                        : '${AppLocalizations.of(context)!.step} '
+                              '${notifier.currentStepIndex} / ${notifier.normalSteps.length}',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   Text(
@@ -538,330 +548,15 @@ class _StaticVideoWidget extends StatelessWidget {
   }
 }
 
-// class _VideoPlayerWidget extends StatefulWidget {
-//   final String videoUrl;
-
-//   const _VideoPlayerWidget({required this.videoUrl});
-
-//   @override
-//   State<_VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
-// }
-
-// class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
-//   late VideoPlayerController _controller;
-//   bool _isInitialized = false;
-//   bool _hasError = false;
-//   String? _errorMessage;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _initializeVideo();
-//   }
-
-//   void _initializeVideo() async {
-//     try {
-//       _controller = VideoPlayerController.networkUrl(
-//         Uri.parse(widget.videoUrl),
-//       );
-
-//       await _controller.initialize();
-
-//       if (mounted) {
-//         setState(() {
-//           _isInitialized = true;
-//         });
-//       }
-//     } catch (e) {
-//       debugPrint("Error initializing video: $e");
-//       if (mounted) {
-//         setState(() {
-//           _hasError = true;
-//           _errorMessage = e.toString();
-//         });
-//       }
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     _controller.dispose();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     if (_hasError) {
-//       return Container(
-//         height: 200,
-//         decoration: BoxDecoration(
-//           color: Colors.grey[200],
-//           borderRadius: BorderRadius.circular(8),
-//         ),
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             const Icon(Icons.error_outline, size: 40, color: Colors.red),
-//             const SizedBox(height: 8),
-//             const Text(
-//               'Failed to load video',
-//               style: TextStyle(fontWeight: FontWeight.w600),
-//             ),
-//             const SizedBox(height: 4),
-//             Text(
-//               _errorMessage ?? 'Unknown error',
-//               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-//               textAlign: TextAlign.center,
-//             ),
-//             const SizedBox(height: 8),
-//             ElevatedButton.icon(
-//               onPressed: () {
-//                 setState(() {
-//                   _hasError = false;
-//                   _errorMessage = null;
-//                 });
-//                 _initializeVideo();
-//               },
-//               icon: const Icon(Icons.refresh),
-//               label: const Text('Retry'),
-//               style: ElevatedButton.styleFrom(
-//                 backgroundColor: Colors.blue,
-//                 foregroundColor: Colors.white,
-//               ),
-//             ),
-//           ],
-//         ),
-//       );
-//     }
-
-//     if (!_isInitialized) {
-//       return Container(
-//         height: 200,
-//         decoration: BoxDecoration(
-//           color: Colors.grey[100],
-//           borderRadius: BorderRadius.circular(8),
-//         ),
-//         child: const Center(
-//           child: Column(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             children: [
-//               CircularProgressIndicator(),
-//               SizedBox(height: 12),
-//               Text('Loading video...', style: TextStyle(color: Colors.grey)),
-//             ],
-//           ),
-//         ),
-//       );
-//     }
-
-//     return ClipRRect(
-//       borderRadius: BorderRadius.circular(8),
-//       child: Stack(
-//         alignment: Alignment.center,
-//         children: [
-//           AspectRatio(
-//             aspectRatio: _controller.value.aspectRatio,
-//             child: VideoPlayer(_controller),
-//           ),
-//           _VideoControls(controller: _controller),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _VideoControls extends StatefulWidget {
-//   final VideoPlayerController controller;
-
-//   const _VideoControls({required this.controller});
-
-//   @override
-//   State<_VideoControls> createState() => _VideoControlsState();
-// }
-
-// class _VideoControlsState extends State<_VideoControls> {
-//   bool _showControls = true;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     widget.controller.addListener(() {
-//       if (mounted) setState(() {});
-//     });
-
-//     _hideControlsTimer();
-//   }
-
-//   void _hideControlsTimer() {
-//     Future.delayed(const Duration(seconds: 3), () {
-//       if (mounted && _showControls) {
-//         setState(() {
-//           _showControls = false;
-//         });
-//       }
-//     });
-//   }
-
-//   void _toggleControlsVisibility() {
-//     setState(() {
-//       _showControls = !_showControls;
-//     });
-
-//     if (_showControls) {
-//       _hideControlsTimer();
-//     }
-//   }
-
-//   String _formatDuration(Duration duration) {
-//     String twoDigits(int n) => n.toString().padLeft(2, '0');
-//     final minutes = twoDigits(duration.inMinutes.remainder(60));
-//     final seconds = twoDigits(duration.inSeconds.remainder(60));
-//     return '$minutes:$seconds';
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     if (!widget.controller.value.isInitialized) {
-//       return const SizedBox.shrink();
-//     }
-
-//     return GestureDetector(
-//       onTap: _toggleControlsVisibility,
-//       child: AspectRatio(
-//         aspectRatio: widget.controller.value.aspectRatio,
-//         child: AnimatedOpacity(
-//           opacity: _showControls ? 1.0 : 0.0,
-//           duration: const Duration(milliseconds: 300),
-//           child: Container(
-//             decoration: BoxDecoration(
-//               gradient: LinearGradient(
-//                 begin: Alignment.topCenter,
-//                 end: Alignment.bottomCenter,
-//                 colors: [Colors.black, Colors.transparent, Colors.black],
-//               ),
-//             ),
-//             child: Column(
-//               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//               children: [
-//                 Container(
-//                   padding: const EdgeInsets.all(8),
-//                   child: Row(
-//                     mainAxisAlignment: MainAxisAlignment.end,
-//                     children: [
-//                       IconButton(
-//                         onPressed: () => _showVideoDialog(context),
-//                         icon: const Icon(
-//                           Icons.fullscreen,
-//                           color: Colors.white,
-//                           size: 24,
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//                 Center(
-//                   child: Container(
-//                     decoration: BoxDecoration(
-//                       color: Colors.black,
-//                       shape: BoxShape.circle,
-//                     ),
-//                     child: IconButton(
-//                       onPressed: () {
-//                         setState(() {
-//                           widget.controller.value.isPlaying
-//                               ? widget.controller.pause()
-//                               : widget.controller.play();
-//                         });
-//                       },
-//                       icon: Icon(
-//                         widget.controller.value.isPlaying
-//                             ? Icons.pause
-//                             : Icons.play_arrow,
-//                         color: Colors.white,
-//                         size: 32,
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//                 Container(
-//                   padding: const EdgeInsets.all(8),
-//                   child: Column(
-//                     children: [
-//                       VideoProgressIndicator(
-//                         widget.controller,
-//                         allowScrubbing: true,
-//                         colors: const VideoProgressColors(
-//                           playedColor: Colors.blue,
-//                           bufferedColor: Colors.grey,
-//                           backgroundColor: Colors.white24,
-//                         ),
-//                       ),
-//                       const SizedBox(height: 4),
-//                       Row(
-//                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                         children: [
-//                           Text(
-//                             _formatDuration(widget.controller.value.position),
-//                             style: const TextStyle(
-//                               color: Colors.white,
-//                               fontSize: 12,
-//                             ),
-//                           ),
-//                           Text(
-//                             _formatDuration(widget.controller.value.duration),
-//                             style: const TextStyle(
-//                               color: Colors.white,
-//                               fontSize: 12,
-//                             ),
-//                           ),
-//                         ],
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-
-//   void _showVideoDialog(BuildContext context) {
-//     showDialog(
-//       context: context,
-//       builder: (context) => Dialog(
-//         backgroundColor: Colors.black,
-//         insetPadding: const EdgeInsets.all(0),
-//         child: Stack(
-//           children: [
-//             Center(
-//               child: AspectRatio(
-//                 aspectRatio: widget.controller.value.aspectRatio,
-//                 child: VideoPlayer(widget.controller),
-//               ),
-//             ),
-//             Positioned(
-//               top: 40,
-//               right: 20,
-//               child: IconButton(
-//                 onPressed: () => Navigator.pop(context),
-//                 icon: const Icon(Icons.close, color: Colors.white, size: 30),
-//               ),
-//             ),
-//             _VideoControls(controller: widget.controller),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 class _VideoPlayerWidget extends StatefulWidget {
   final String videoUrl;
   final Map<String, String>? subtitles; // key = lang, value = url
 
-  const _VideoPlayerWidget({required this.videoUrl, this.subtitles, super.key});
+  const _VideoPlayerWidget({
+    required this.videoUrl,
+    this.subtitles,
+    required ValueKey<String> key,
+  });
 
   @override
   State<_VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
@@ -870,18 +565,48 @@ class _VideoPlayerWidget extends StatefulWidget {
 class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
   late VideoPlayerController _controller;
   CustomSubtitleController? _customSubtitleController;
-  Timer? _positionTimer;
   Map<String, String>? _subs;
   String? _selectedLang;
 
   bool _isInitialized = false;
   bool _hasError = false;
+  bool _isMuted = true;
+  double _volume = 1.0;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _initializeVideo();
+  }
+
+  // Listener mới để cập nhật phụ đề
+  void _videoListener() {
+    if (_controller.value.isInitialized && _customSubtitleController != null) {
+      // Chỉ cập nhật position vào controller,
+      // controller sẽ tự lo việc thông báo cho UI qua ValueNotifier
+      _customSubtitleController!.updatePosition(_controller.value.position);
+    }
+  }
+
+  Future<String?> _getSavedSubtitleLanguage(
+    Map<String, String> subtitles,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedLang = prefs.getString('selectedLanguage');
+
+    switch (savedLang) {
+      case 'English':
+        return subtitles.containsKey('en') ? 'en' : null;
+      case 'Vietnamese':
+        return subtitles.containsKey('vi') ? 'vi' : null;
+      case 'Chinese':
+        return subtitles.containsKey('zh') ? 'zh' : null;
+      case 'Taiwanese':
+        return subtitles.containsKey('zh') ? 'zh' : null;
+      default:
+        return null;
+    }
   }
 
   Future<void> _initializeVideo() async {
@@ -891,77 +616,52 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
       );
       await _controller.initialize();
 
-      // Khởi tạo custom subtitle controller
+      // Thêm listener cho video
+      _controller.addListener(_videoListener);
+
+      _isMuted = true;
+      await _controller.setVolume(0.0);
+
       if (widget.subtitles != null && widget.subtitles!.isNotEmpty) {
         _subs = widget.subtitles!;
-        _selectedLang = _subs!.containsKey('en') ? 'en' : _subs!.keys.first;
+        final savedLang = await _getSavedSubtitleLanguage(_subs!);
+        _selectedLang =
+            savedLang ?? (_subs!.containsKey('en') ? 'en' : _subs!.keys.first);
 
         _customSubtitleController = CustomSubtitleController();
         await _customSubtitleController!.loadFromUrl(_subs![_selectedLang]!);
-
-        // Bắt đầu timer để cập nhật subtitle position
-        _startPositionTimer();
-
-        debugPrint(
-          "✅ Custom subtitle controller created with URL: ${_subs![_selectedLang]}",
-        );
       }
 
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-      }
+      if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
-      debugPrint("Error initializing video: $e");
-      if (mounted) {
+      if (mounted)
         setState(() {
           _hasError = true;
           _errorMessage = e.toString();
         });
-      }
     }
-  }
-
-  void _startPositionTimer() {
-    _positionTimer?.cancel();
-    _positionTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (_controller.value.isInitialized &&
-          _customSubtitleController != null) {
-        _customSubtitleController!.updatePosition(_controller.value.position);
-        if (mounted) setState(() {});
-      }
-    });
   }
 
   // đổi ngôn ngữ phụ đề khi user chọn
   Future<void> _changeSubtitleLang(String lang) async {
-    if (_subs == null) return;
-    final url = _subs![lang];
+    if (_customSubtitleController == null) return;
+
+    if (lang == 'off') {
+      _customSubtitleController!.disable();
+      setState(() => _selectedLang = null);
+      return;
+    }
+
+    final url = _subs?[lang];
     if (url == null) return;
 
-    try {
-      if (_customSubtitleController != null) {
-        await _customSubtitleController!.loadFromUrl(url);
-      } else {
-        _customSubtitleController = CustomSubtitleController();
-        await _customSubtitleController!.loadFromUrl(url);
-        _startPositionTimer();
-      }
-
-      setState(() {
-        _selectedLang = lang;
-      });
-
-      debugPrint("✅ Changed subtitle language to: $lang, URL: $url");
-    } catch (e) {
-      debugPrint("❌ Error changing subtitle language: $e");
-    }
+    await _customSubtitleController!.loadFromUrl(url);
+    setState(() => _selectedLang = lang);
   }
 
   @override
   void dispose() {
-    _positionTimer?.cancel();
+    _controller.removeListener(_videoListener); // Quan trọng: Remove listener
     _controller.dispose();
     _customSubtitleController?.dispose();
     super.dispose();
@@ -983,19 +683,51 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
           ),
 
           // Custom subtitle overlay
+          // if (_customSubtitleController != null)
+          //   CustomSubtitleOverlay(text: _customSubtitleController!.currentText),
           if (_customSubtitleController != null)
-            CustomSubtitleOverlay(text: _customSubtitleController!.currentText),
+            ValueListenableBuilder<String?>(
+              valueListenable: _customSubtitleController!,
+              builder: (context, subtitleText, _) {
+                if (subtitleText == null || subtitleText.isEmpty)
+                  return const SizedBox.shrink();
+                return CustomSubtitleOverlay(text: subtitleText);
+              },
+            ),
 
           // Video controls
           _VideoControls(
             controller: _controller,
+            isMuted: _isMuted,
+            onToggleMute: _toggleMute,
             availableSubtitleLangs: _subs?.keys.toList(),
             selectedLang: _selectedLang,
             onSubtitleSelected: _changeSubtitleLang,
+            subtitleController: _customSubtitleController,
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _toggleMute() async {
+    if (_isMuted) {
+      await _unmute();
+    } else {
+      await _mute();
+    }
+  }
+
+  Future<void> _mute() async {
+    _isMuted = true;
+    await _controller.setVolume(0.0);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _unmute() async {
+    _isMuted = false;
+    await _controller.setVolume(_volume);
+    if (mounted) setState(() {});
   }
 
   Widget _loadingWidget() {
@@ -1064,16 +796,21 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
 ////// Controls với menu chọn subtitle
 class _VideoControls extends StatefulWidget {
   final VideoPlayerController controller;
+  final bool isMuted;
+  final VoidCallback onToggleMute;
   final List<String>? availableSubtitleLangs;
   final String? selectedLang;
   final ValueChanged<String>? onSubtitleSelected;
+  final CustomSubtitleController? subtitleController; // Nhận object controller
 
   const _VideoControls({
     required this.controller,
+    required this.isMuted,
+    required this.onToggleMute,
     this.availableSubtitleLangs,
     this.selectedLang,
     this.onSubtitleSelected,
-    // ignore: unused_element_parameter
+    this.subtitleController,
     super.key,
   });
 
@@ -1216,7 +953,7 @@ class _VideoControlsState extends State<_VideoControls> {
 
   String _getLanguageName(String langCode) {
     // Map các mã ngôn ngữ thành tên hiển thị
-    const languageMap = {'en': 'English', 'vi': 'Tiếng Việt'};
+    const languageMap = {'en': 'English', 'vi': 'Tiếng Việt', 'zh': '中文'};
 
     return languageMap[langCode.toLowerCase()] ?? langCode.toUpperCase();
   }
@@ -1263,6 +1000,25 @@ class _VideoControlsState extends State<_VideoControls> {
                       const SizedBox(width: 40), // Spacer
                       Row(
                         children: [
+                          GestureDetector(
+                            onTap: widget.onToggleMute,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Icon(
+                                widget.isMuted
+                                    ? Icons.volume_off
+                                    : Icons.volume_up,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 12),
                           _buildSubtitleMenu(),
                           const SizedBox(width: 12),
                           GestureDetector(
@@ -1412,6 +1168,8 @@ class _VideoControlsState extends State<_VideoControls> {
           availableSubtitleLangs: widget.availableSubtitleLangs,
           selectedLang: widget.selectedLang,
           onSubtitleSelected: widget.onSubtitleSelected,
+          // Truyền controller xuống để dùng ValueListenableBuilder bên trong fullscreen
+          subtitleController: widget.subtitleController,
         ),
       ),
     );
@@ -1423,14 +1181,17 @@ class _FullscreenVideoPlayer extends StatefulWidget {
   final List<String>? availableSubtitleLangs;
   final String? selectedLang;
   final ValueChanged<String>? onSubtitleSelected;
+  final CustomSubtitleController?
+  subtitleController; // Dùng controller để lấy text realtime
 
   const _FullscreenVideoPlayer({
     required this.controller,
     this.availableSubtitleLangs,
     this.selectedLang,
     this.onSubtitleSelected,
-    Key? key,
-  }) : super(key: key);
+    this.subtitleController,
+    super.key,
+  });
 
   @override
   State<_FullscreenVideoPlayer> createState() => _FullscreenVideoPlayerState();
@@ -1438,21 +1199,54 @@ class _FullscreenVideoPlayer extends StatefulWidget {
 
 class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
   bool _showControls = true;
+  String? _selectedLangUI;
   Timer? _hideTimer;
 
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(() {
-      if (mounted) setState(() {});
-    });
+    _selectedLangUI = widget.selectedLang; // sync ban đầu
+    // 1. XOAY MÀN HÌNH NGANG KHI VÀO FULLSCREEN
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    // Ẩn thanh status bar để trải nghiệm tốt hơn
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    widget.controller.addListener(_videoListener);
     _startHideTimer();
+  }
+
+  void _videoListener() {
+    if (mounted) {
+      // 1. Cập nhật UI cho Slider/Timer (cũ)
+      setState(() {});
+
+      // 2. CẬP NHẬT PHỤ ĐỀ (MỚI)
+      if (widget.subtitleController != null) {
+        widget.subtitleController!.updatePosition(
+          widget.controller.value.position,
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
+    // 2. XOAY MÀN HÌNH VỀ DỌC KHI THOÁT FULLSCREEN
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    widget.controller.removeListener(_videoListener);
     _hideTimer?.cancel();
     super.dispose();
+  }
+
+  // Copy lại hàm helper từ class cũ
+  String _getLanguageName(String langCode) {
+    const languageMap = {'en': 'English', 'vi': 'Tiếng Việt', 'zh': '中文'};
+    return languageMap[langCode.toLowerCase()] ?? langCode.toUpperCase();
   }
 
   void _startHideTimer() {
@@ -1466,21 +1260,108 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
 
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
-    if (_showControls) {
-      _startHideTimer();
-    }
+    if (_showControls) _startHideTimer();
   }
 
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = duration.inHours;
     final minutes = twoDigits(duration.inMinutes.remainder(60));
     final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return duration.inHours > 0
+        ? '${duration.inHours}:$minutes:$seconds'
+        : '$minutes:$seconds';
+  }
 
-    if (hours > 0) {
-      return '$hours:$minutes:$seconds';
+  Widget _buildVolumeButton() {
+    final bool isMuted = widget.controller.value.volume == 0.0;
+
+    return GestureDetector(
+      onTap: () async {
+        if (isMuted) {
+          await widget.controller.setVolume(1.0);
+        } else {
+          await widget.controller.setVolume(0.0);
+        }
+        // Listener của controller sẽ tự gọi setState() để cập nhật icon
+      },
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Icon(
+          isMuted ? Icons.volume_off : Icons.volume_up,
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubtitleMenu() {
+    if (widget.availableSubtitleLangs == null ||
+        widget.availableSubtitleLangs!.isEmpty) {
+      return const SizedBox.shrink();
     }
-    return '$minutes:$seconds';
+
+    return PopupMenuButton<String>(
+      initialValue: _selectedLangUI ?? 'off',
+      icon: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Icon(Icons.subtitles, color: Colors.white, size: 24),
+      ),
+      color: Colors.black.withOpacity(0.9),
+      onSelected: (lang) {
+        // 1. cập nhật UI fullscreen
+        setState(() {
+          _selectedLangUI = lang == 'off' ? null : lang;
+        });
+
+        // 2. gọi logic thật
+        widget.onSubtitleSelected?.call(lang);
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'off',
+          child: Row(
+            children: [
+              Icon(
+                _selectedLangUI == null ? Icons.check : null,
+                color: Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              const Text('Off', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        ...widget.availableSubtitleLangs!.map(
+          (lang) => PopupMenuItem(
+            value: lang,
+            child: Row(
+              children: [
+                Icon(
+                  lang == _selectedLangUI ? Icons.check : null,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _getLanguageName(lang),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -1490,177 +1371,158 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
       body: GestureDetector(
         onTap: _toggleControls,
         child: Stack(
+          alignment: Alignment.center,
           children: [
-            // Video player
-            Center(
-              child: AspectRatio(
-                aspectRatio: widget.controller.value.aspectRatio,
-                child: VideoPlayer(widget.controller),
-              ),
+            // Video Player
+            AspectRatio(
+              aspectRatio: widget.controller.value.aspectRatio,
+              child: VideoPlayer(widget.controller),
             ),
 
-            // Controls overlay
+            // 3. HIỂN THỊ SUBTITLE (Sử dụng ValueListenableBuilder để mượt mà)
+            // SUBTITLE OVERLAY – FULLSCREEN
+            if (widget.subtitleController != null)
+              Positioned(
+                bottom: _showControls ? 60 : 10,
+                left: 40,
+                right: 40,
+                child: ValueListenableBuilder<String?>(
+                  valueListenable: widget.subtitleController!,
+                  builder: (context, text, _) {
+                    if (text == null || text.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          text,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            // Controls Overlay
             AnimatedOpacity(
               opacity: _showControls ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 300),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.7),
-                      Colors.transparent,
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.7),
-                    ],
-                    stops: const [0.0, 0.3, 0.7, 1.0],
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    // Top bar
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.6),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                            // Subtitle menu here if needed
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Center play button
-                    Expanded(
-                      child: Center(
-                        child: GestureDetector(
-                          onTap: () {
-                            if (widget.controller.value.isPlaying) {
-                              widget.controller.pause();
-                            } else {
-                              widget.controller.play();
-                              _startHideTimer();
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.7),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              widget.controller.value.isPlaying
-                                  ? Icons.pause
-                                  : Icons.play_arrow,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Bottom controls
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Text(
-                              _formatDuration(widget.controller.value.position),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  activeTrackColor: Colors.blue,
-                                  inactiveTrackColor: Colors.white.withOpacity(
-                                    0.3,
-                                  ),
-                                  thumbColor: Colors.blue,
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 8,
-                                  ),
-                                  trackHeight: 4,
-                                ),
-                                child: Slider(
-                                  value: widget
-                                      .controller
-                                      .value
-                                      .position
-                                      .inMilliseconds
-                                      .toDouble()
-                                      .clamp(
-                                        0.0,
-                                        widget
-                                            .controller
-                                            .value
-                                            .duration
-                                            .inMilliseconds
-                                            .toDouble(),
-                                      ),
-                                  min: 0.0,
-                                  max: widget
-                                      .controller
-                                      .value
-                                      .duration
-                                      .inMilliseconds
-                                      .toDouble(),
-                                  onChanged: (value) {
-                                    widget.controller.seekTo(
-                                      Duration(milliseconds: value.round()),
-                                    );
-                                  },
-                                  onChangeStart: (value) {
-                                    _hideTimer?.cancel();
-                                  },
-                                  onChangeEnd: (value) {
-                                    _startHideTimer();
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              _formatDuration(widget.controller.value.duration),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: _buildControlsUI(context),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildControlsUI(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black54,
+            Colors.transparent,
+            Colors.transparent,
+            Colors.black54,
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          // Top Bar
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  // LEFT: Close
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+
+                  const Spacer(), // đẩy nhóm bên phải sang phải
+                  // RIGHT: Volume + Subtitle
+                  Row(
+                    children: [
+                      _buildVolumeButton(),
+                      const SizedBox(width: 12),
+                      _buildSubtitleMenu(),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Middle
+          const Spacer(),
+          IconButton(
+            iconSize: 60,
+            icon: Icon(
+              widget.controller.value.isPlaying
+                  ? Icons.pause_circle
+                  : Icons.play_circle,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              widget.controller.value.isPlaying
+                  ? widget.controller.pause()
+                  : widget.controller.play();
+              _startHideTimer();
+            },
+          ),
+          const Spacer(),
+          // Bottom Progress Bar
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Text(
+                    _formatDuration(widget.controller.value.position),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  Expanded(
+                    child: Slider(
+                      value: widget.controller.value.position.inMilliseconds
+                          .toDouble(),
+                      max: widget.controller.value.duration.inMilliseconds
+                          .toDouble(),
+                      onChanged: (v) => widget.controller.seekTo(
+                        Duration(milliseconds: v.round()),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _formatDuration(widget.controller.value.duration),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
