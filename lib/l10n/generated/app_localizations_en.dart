@@ -1045,11 +1045,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get typeDaily => 'Daily Inspection';
 
   @override
-  String get level1 => 'Maintenance LV 1';
+  String get level1 => 'LV 1';
 
   @override
-  String get level2 => 'Maintenance LV 2';
+  String get level2 => 'LV 2';
 
   @override
-  String get level3 => 'Maintenance LV 3';
+  String get level3 => 'LV 3';
 }

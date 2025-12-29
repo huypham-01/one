@@ -168,12 +168,12 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
         // await NotificationManager.onLogin();
         // await NotificationManagerV2.fetchAllData();
-        if (!isMock) {
-          await MaintenanceNotificationService.fetchAndSaveMaintenanceData();
-          // 2. Hẹn giờ báo 7:00 và 19:00 mỗi ngày
-          await MaintenanceNotificationService.scheduleDailyAlarms();
-        }
-
+        // if (!isMock) {
+        //   await MaintenanceNotificationService.fetchAndSaveMaintenanceData();
+        //   // 2. Hẹn giờ báo 7:00 và 19:00 mỗi ngày
+        //   await MaintenanceNotificationService.scheduleDailyAlarms();
+        // }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
         if (mounted) {
           final isMock = await OnboardingHelper.isMockUser();
           if (isMock) {

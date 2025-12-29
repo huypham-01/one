@@ -89,9 +89,9 @@ class _StatCardGridState extends State<StatCardGrid> with RouteAware {
     } catch (e) {
       // Xử lý lỗi (không set count nếu lỗi)
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải dữ liệu thiết bị: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('fail to load equipment data')));
       }
     } finally {
       _onFetchComplete();
@@ -109,11 +109,7 @@ class _StatCardGridState extends State<StatCardGrid> with RouteAware {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Lỗi tải dữ liệu kiểm tra hàng ngày: ${e.toString()}',
-            ),
-          ),
+          SnackBar(content: Text('fail to load daily inspection data')),
         );
       }
     } finally {
@@ -132,7 +128,7 @@ class _StatCardGridState extends State<StatCardGrid> with RouteAware {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải dữ liệu bảo trì: ${e.toString()}')),
+          SnackBar(content: Text('fail to load maintenance data')),
         );
       }
     } finally {
@@ -150,9 +146,9 @@ class _StatCardGridState extends State<StatCardGrid> with RouteAware {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải dữ liệu quá hạn: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fail to load overdue data')));
       }
     } finally {
       _onFetchComplete();

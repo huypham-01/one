@@ -2,6 +2,7 @@ import 'dart:async' as http;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt_decode/jwt_decode.dart';
 import 'package:mobile/cmms/data/mock_data.dart';
@@ -132,6 +133,10 @@ class ApiService {
 
         final role = payload["role"]?.toString() ?? "";
         final userId = payload["sub"];
+
+        // 🔥 GỬI FCM TOKEN SAU KHI LOGIN THÀNH CÔNG
+        await ApiService.sendFcmTokenToBackend(token);
+
         final usernameDecoded = payload["username"] ?? username;
         final permissions = await getPermissions(usernameDecoded);
         // 🔒 Lưu quyền vào SharedPreferences
@@ -191,7 +196,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> setPassword(String password) async {
     try {
-       final isMock = await OnboardingHelper.isMockUser();
+      final isMock = await OnboardingHelper.isMockUser();
       if (isMock) {
         return {
           'success': true,
@@ -283,6 +288,33 @@ class ApiService {
       };
     } catch (e) {
       return {'success': false, 'statusCode': null, 'message': 'Lỗi: $e'};
+    }
+  }
+
+  static Future<void> sendFcmTokenToBackend(String accessToken) async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+
+      if (fcmToken == null || fcmToken.isEmpty) {
+        print("⚠️ Không lấy được FCM token");
+        return;
+      }
+
+      final url =
+          "$baseUrl/cmms/cip3/index.php?c=UserController&m=updateFcmToken";
+
+      await http.post(
+        Uri.parse(url),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $accessToken", // ⭐ RẤT QUAN TRỌNG
+        },
+        body: jsonEncode({"fcm_token": fcmToken}),
+      );
+
+      print("✅ Đã gửi FCM token lên backend");
+    } catch (e) {
+      print("❌ Lỗi gửi FCM token: $e");
     }
   }
 

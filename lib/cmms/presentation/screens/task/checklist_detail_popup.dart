@@ -38,41 +38,45 @@ class _ChecklistDetailPopupState extends State<ChecklistDetailPopup> {
     return ChangeNotifierProvider(
       create: (_) =>
           ChecklistFormNotifier()..loadForm(widget.keyW, widget.formId),
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
-          title: Consumer<ChecklistFormNotifier>(
-            builder: (context, notifier, _) => Text(
-              notifier.wiCode.isNotEmpty
-                  ? notifier.wiCode
-                  : AppLocalizations.of(context)!.checklistForm,
+      child: SafeArea(
+        top: false,
+        bottom: true,
+        child: Scaffold(
+          backgroundColor: Colors.grey[50],
+          appBar: AppBar(
+            title: Consumer<ChecklistFormNotifier>(
+              builder: (context, notifier, _) => Text(
+                notifier.wiCode.isNotEmpty
+                    ? notifier.wiCode
+                    : AppLocalizations.of(context)!.checklistForm,
+              ),
             ),
+            backgroundColor: cusBlue,
+            foregroundColor: Colors.white,
+            elevation: 1,
           ),
-          backgroundColor: cusBlue,
-          foregroundColor: Colors.white,
-          elevation: 1,
-        ),
-        body: Consumer<ChecklistFormNotifier>(
-          builder: (context, notifier, _) {
-            if (notifier.isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+          body: Consumer<ChecklistFormNotifier>(
+            builder: (context, notifier, _) {
+              if (notifier.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-            if (notifier.steps.isEmpty) {
-              return const _EmptyStateWidget();
-            }
+              if (notifier.steps.isEmpty) {
+                return const _EmptyStateWidget();
+              }
 
-            return Column(
-              children: [
-                _ProgressIndicator(),
-                Expanded(child: _FormContent()),
-                _NavigationFooter(
-                  onSubmitted: widget.onSubmitted,
-                  keyW: widget.keyW,
-                ),
-              ],
-            );
-          },
+              return Column(
+                children: [
+                  _ProgressIndicator(),
+                  Expanded(child: _FormContent()),
+                  _NavigationFooter(
+                    onSubmitted: widget.onSubmitted,
+                    keyW: widget.keyW,
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

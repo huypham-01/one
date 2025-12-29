@@ -549,37 +549,44 @@ class EquipmentDetailWiScreen extends StatelessWidget {
 
         return notifier;
       },
-      child: Scaffold(
-        backgroundColor: white,
-        appBar: AppBar(
-          title: Consumer<ChecklistFormNotifier>(
-            builder: (context, notifier, _) => Text(
-              notifier.wiCode.isNotEmpty
-                  ? notifier.wiCode
-                  : AppLocalizations.of(context)!.checklistForm,
+      child: SafeArea(
+        top: false,
+        bottom: true,
+        child: Scaffold(
+          backgroundColor: white,
+          appBar: AppBar(
+            title: Consumer<ChecklistFormNotifier>(
+              builder: (context, notifier, _) => Text(
+                notifier.wiCode.isNotEmpty
+                    ? notifier.wiCode
+                    : AppLocalizations.of(context)!.checklistForm,
+              ),
             ),
+            backgroundColor: cusBlue, // cusBlue replacement
+            foregroundColor: Colors.white,
+            elevation: 1,
           ),
-          backgroundColor: cusBlue, // cusBlue replacement
-          foregroundColor: Colors.white,
-          elevation: 1,
-        ),
-        body: Consumer<ChecklistFormNotifier>(
-          builder: (context, notifier, _) {
-            if (notifier.isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+          body: Consumer<ChecklistFormNotifier>(
+            builder: (context, notifier, _) {
+              if (notifier.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-            if (notifier.steps.isEmpty) {
-              return const _EmptyStateWidget();
-            }
+              if (notifier.steps.isEmpty) {
+                return const _EmptyStateWidget();
+              }
 
-            return Column(
-              children: [
-                const Expanded(child: _FormContent()),
-                _NavigationFooter(onSubmitted: onSubmitted, onSubmit: onSubmit),
-              ],
-            );
-          },
+              return Column(
+                children: [
+                  const Expanded(child: _FormContent()),
+                  _NavigationFooter(
+                    onSubmitted: onSubmitted,
+                    onSubmit: onSubmit,
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

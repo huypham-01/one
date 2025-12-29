@@ -619,7 +619,7 @@ class FmcsApiService {
               'Accept': 'application/json',
             },
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 300));
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body) as List;
@@ -645,7 +645,7 @@ class FmcsApiService {
               'Accept': 'application/json',
             },
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 300));
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body) as List;
@@ -671,7 +671,7 @@ class FmcsApiService {
               'Accept': 'application/json',
             },
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 300));
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);

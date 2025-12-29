@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -271,7 +272,29 @@ class MaintenanceNotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
-    await _notifications.show(888, "🔔 Test Notification", msg, details);
+    await _notifications.show(888, "🔔 Test Notificationnn", msg, details);
+  }
+
+  static Future<void> showFromData(Map<String, dynamic> data) async {
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'wi_channel',
+        'Working Instruction',
+        channelDescription: 'WI notifications',
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: 'ic_notification', // 🔥 ICON FIX VUÔNG ĐEN
+      ),
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      data['title'] ?? 'Notification',
+      data['body'] ?? '',
+      details,
+      payload: jsonEncode(data),
+    );
   }
 
   // ============================================================

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "404055361898",
+    "project_id": "oneapp-ee40c",
+    "storage_bucket": "oneapp-ee40c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:404055361898:android:30390fa141446ea66efd13",
+        "android_client_info": {
+          "package_name": "com.example.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBT6Yngf330udDeP3WbZgj_pCZ-foHPayM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -43,7 +43,7 @@ class _OverdueScreenState extends State<OverdueScreen>
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi khi tải dữ liệu: $e')));
+        ).showSnackBar(SnackBar(content: Text('Fail to load overdue data')));
       }
       print('Error loading inspections: $e');
     }
@@ -304,9 +304,7 @@ class _OverdueScreenState extends State<OverdueScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "${AppLocalizations.of(context)!.errorTitle}: ${snapshot.error}",
-                  ),
+                  Text("${snapshot.error}"),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _loadInspections,

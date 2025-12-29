@@ -10,7 +10,6 @@ import '../main.dart';
 const String ipconfig = "192.168.110.2";
 const String baseUrl = "http://192.168.110.2";
 // const String baseUrl = "http://192.168.0.103:8080/web_develop/iam";
-const bool useMockk = bool.fromEnvironment('USE_MOCK', defaultValue: true);
 
 final white = Colors.grey[50];
 final cusBlue = Color.fromARGB(255, 67, 103, 164);

@@ -350,9 +350,9 @@
   "appVersion" : "Version {appVersion}",
 
   "typeDaily": "Daily Inspection",
-  "level1": "Maintenance LV 1",
-  "level2": "Maintenance LV 2",
-  "level3": "Maintenance LV 3"
+  "level1": "LV 1",
+  "level2": "LV 2",
+  "level3": "LV 3"
 
   
 } 

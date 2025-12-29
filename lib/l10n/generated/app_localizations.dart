@@ -2144,19 +2144,19 @@ abstract class AppLocalizations {
   /// No description provided for @level1.
   ///
   /// In en, this message translates to:
-  /// **'Maintenance LV 1'**
+  /// **'LV 1'**
   String get level1;
 
   /// No description provided for @level2.
   ///
   /// In en, this message translates to:
-  /// **'Maintenance LV 2'**
+  /// **'LV 2'**
   String get level2;
 
   /// No description provided for @level3.
   ///
   /// In en, this message translates to:
-  /// **'Maintenance LV 3'**
+  /// **'LV 3'**
   String get level3;
 }
 

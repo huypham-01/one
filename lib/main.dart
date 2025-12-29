@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/ems/data/action_provider_ems.dart';
 import 'package:mobile/utils/helper/onboarding_helper.dart';
 import 'package:mobile/utils/routes/app_routes.dart';
+import 'package:mobile/utils/services/fcm_service.dart';
 import 'package:mobile/utils/services/notification_service.dart';
 import 'package:mobile/utils/services/update_service.dart';
 import 'package:provider/provider.dart';
@@ -13,17 +14,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'fmcs/data/action_provider.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'utils/helper/permission_helper.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print('🔕 Background message: ${message.notification?.title}');
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await MaintenanceNotificationService.init();
 
-  print("✅ Notification scheduling completed");
+  // 1. Firebase
+  await Firebase.initializeApp();
+  // 2. Background handler
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  // Local notification (đã có)
+  await MaintenanceNotificationService.init();
+  // 3. FCM init
+  await FcmService.init();
 
   final firstTime = await OnboardingHelper.isFirstTime();
 
@@ -130,6 +146,15 @@ class _MyAppState extends State<MyApp> {
     });
 
     print("🎯 Initialized: $_initialRoute — locale: $_locale");
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final data = message.data;
+
+      if (data.isNotEmpty) {
+        MaintenanceNotificationService.showFromData(data);
+        print('📩 FCM DATA: $data');
+      }
+    });
 
     // ------------------------------------------------------------
     // 🔥 NEW: KIỂM TRA CẬP NHẬT APP
