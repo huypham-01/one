@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 
 const String ipconfig = "192.168.110.2";
-const String baseUrl = "http://192.168.110.2";
+const String baseUrl = "http://192.168.110.2/web_develop";
 // const String baseUrl = "http://192.168.0.103:8080/web_develop/iam";
 
 final white = Colors.grey[50];
