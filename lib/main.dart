@@ -11,6 +11,18 @@ import 'package:mobile/utils/services/update_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mobile/cmms/data/datasources/report_remote_datasource.dart';
+import 'package:mobile/cmms/data/repositories/report_repository_impl.dart';
+import 'package:mobile/cmms/domain/usecases/get_repair_methods_usecase.dart';
+import 'package:mobile/cmms/domain/usecases/get_issue_types_usecase.dart';
+import 'package:mobile/cmms/domain/usecases/get_equipment_by_machine_id_usecase.dart';
+import 'package:mobile/cmms/domain/usecases/submit_repair_result_usecase.dart';
+import 'package:mobile/cmms/domain/usecases/get_all_reports_usecase.dart';
+import 'package:mobile/cmms/presentation/providers/report_provider.dart';
+import 'package:mobile/cmms/presentation/providers/breakdown_history_provider.dart';
+import 'package:mobile/cmms/domain/usecases/get_on_wait_reports_usecase.dart';
+import 'package:mobile/cmms/presentation/providers/waiting_repair_provider.dart';
+
 import 'fmcs/data/action_provider.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -48,6 +60,47 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ActionProvider()),
         ChangeNotifierProvider(create: (_) => IssueActionProvider()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final repository = ReportRepositoryImpl(
+              remoteDataSource: ReportRemoteDataSourceImpl(),
+            );
+            return ReportProvider(
+              getRepairMethodsUseCase: GetRepairMethodsUseCase(
+                repository: repository,
+              ),
+              getIssueTypesUseCase: GetIssueTypesUseCase(
+                repository: repository,
+              ),
+              getEquipmentByMachineIdUseCase: GetEquipmentByMachineIdUseCase(
+                repository: repository,
+              ),
+              submitRepairResultUseCase: SubmitRepairResultUseCase(
+                repository: repository,
+              ),
+            );
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final repository = ReportRepositoryImpl(
+              remoteDataSource: ReportRemoteDataSourceImpl(),
+            );
+            return BreakdownHistoryProvider(
+              GetAllReportsUseCase(repository: repository),
+            );
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final repository = ReportRepositoryImpl(
+              remoteDataSource: ReportRemoteDataSourceImpl(),
+            );
+            return WaitingRepairProvider(
+              GetOnWaitReportsUseCase(repository: repository),
+            );
+          },
+        ),
       ],
       child: MyApp(showOnboarding: firstTime),
     ),

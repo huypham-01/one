@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/l10n/generated/app_localizations.dart';
+import 'package:mobile/utils/routes/cmms_routes.dart';
 
 import '../../utils/constants.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
-import 'screens/report/report_screen.dart';
+import 'screens/report/dashboard_report_screen.dart';
 import 'screens/settings/setting_screen.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -20,7 +21,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const WorkingInstructionsScreen(),
-    const ReportScreen(),
+    const DashboardReportScreen(),
     ProfileScreen(),
   ];
 
@@ -73,7 +74,7 @@ class _MainNavigationState extends State<MainNavigation> {
                       size: 26,
                     ),
                     onPressed: () {
-                      // TODO: Xử lý sự kiện quét QR/Barcode tại đây
+                      Navigator.pushNamed(context, CmmsRoutes.qrscan);
                     },
                     tooltip: 'Quét mã',
                   ),

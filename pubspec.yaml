@@ -63,6 +63,7 @@ dependencies:
   package_info_plus: ^9.0.0
   firebase_core: ^4.3.0
   firebase_messaging: ^16.1.0
+  mobile_scanner: ^7.2.0
 dependency_overrides:
   vector_math: ^2.2.0
 
@@ -76,11 +77,6 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter packages.
 flutter:
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

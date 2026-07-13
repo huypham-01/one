@@ -44,11 +44,19 @@ class FormService {
   static Future<FormResponse> loadFormById(String keyW, String uuid) async {
     try {
       // ========== MOCK MODE ==========
-       final isMock = await OnboardingHelper.isMockUser();
+      final isMock = await OnboardingHelper.isMockUser();
       if (isMock) {
         return _mockLoadForm();
       }
-      final response = await http.get(Uri.parse("${_geturl(keyW)}$uuid"));
+      final token = await ApiService.getToken();
+      final response = await http.get(
+        Uri.parse("${_geturl(keyW)}$uuid"),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);

@@ -13,6 +13,7 @@ class EquipmentData {
   final int historyCount;
   final String unit;
   final String category;
+  final String? breakdownUuid;
 
   EquipmentData({
     required this.uuid,
@@ -25,6 +26,7 @@ class EquipmentData {
     required this.historyCount,
     required this.unit,
     required this.category,
+    this.breakdownUuid,
   });
 
   factory EquipmentData.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class EquipmentData {
           0, // ép về int
       unit: json['unit'] ?? 'N/A',
       category: json['category'] ?? 'N/A',
+      breakdownUuid:   json['active_breakdown']?['uuid']?.toString(),
     );
   }
 
@@ -56,6 +59,7 @@ class EquipmentData {
       'history_count': historyCount,
       'unit': unit,
       'category': category,
+      'breakdown_uuid': breakdownUuid,
     };
   }
 
@@ -74,6 +78,7 @@ class EquipmentData {
       "manufacturingDate": manufacturingDate,
       "historyCount": _formatNumber(historyCount),
       "unit": unit,
+      "breakdownUuid": breakdownUuid ?? "",
     };
   }
 
